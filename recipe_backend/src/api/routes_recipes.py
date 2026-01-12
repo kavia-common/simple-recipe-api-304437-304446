@@ -90,27 +90,27 @@ def get_recipe(recipe_id: int) -> RecipeOut:
 )
 def update_recipe(recipe_id: int, payload: RecipeUpdate) -> RecipeOut:
     """Update a recipe by id."""
-    row = db.execute_returning_one(
-        """
-        UPDATE recipes
-        SET title = %s,
-            description = %s,
-            ingredients = %s,
-            instructions = %s
-        WHERE id = %s
-        RETURNING id, title, description, ingredients, instructions
-        """,
-        (
-            payload.title,
-            payload.description,
-            payload.ingredients,
-            payload.instructions,
-            recipe_id,
-        ),
-    )
-    # If id doesn't exist, RETURNING yields 0 rows; db layer raises.
-    # Convert that into a 404 for API correctness.
-    if not row:
+    try:
+        row = db.execute_returning_one(
+            """
+            UPDATE recipes
+            SET title = %s,
+                description = %s,
+                ingredients = %s,
+                instructions = %s
+            WHERE id = %s
+            RETURNING id, title, description, ingredients, instructions
+            """,
+            (
+                payload.title,
+                payload.description,
+                payload.ingredients,
+                payload.instructions,
+                recipe_id,
+            ),
+        )
+    except RuntimeError:
+        # Raised by db layer when UPDATE ... RETURNING returns no row (id not found)
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recipe not found")
     return _row_to_recipe_out(row)
 
